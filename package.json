@@ -1,0 +1,53 @@
+{
+  "name": "ask87_opencode",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thedtvn/ask87_opencode.git"
+  },
+  "homepage": "https://github.com/thedtvn/ask87_opencode#readme",
+  "bugs": {
+    "url": "https://github.com/thedtvn/ask87_opencode/issues"
+  },
+  "description": "OpenCode V2 session status lighting for ATTACK SHARK X87 keyboards.",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tui": "./src/tui.tsx",
+    "./gui-experimental": "./dist/gui-experimental.cjs",
+    "./rpc": "./src/rpc.ts"
+  },
+  "files": [
+    "src",
+    "dist/gui-experimental.cjs"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
+    "dev": "tsc -p tsconfig.json --noEmit --watch",
+    "test": "tsx --test tests/*.test.ts",
+    "build": "vite build",
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.2.5",
+    "attack-shark-x87": "github:thedtvn/attack_shark_x87_rs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "solid-js": "^1.9.18",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.3.7",
+    "vite-plugin-solid": "^2.11.15"
+  }
+}

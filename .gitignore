@@ -1,0 +1,17 @@
+node_modules/
+dist/*
+!dist/gui-experimental.cjs
+*.tgz
+*.log
+logs/
+coverage/
+.nyc_output/
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+.opencode/
+.DS_Store
+Thumbs.db
