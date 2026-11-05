@@ -1,0 +1,66 @@
+name: Native Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: native-v0.1.0-win32-x64
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout packaging repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Checkout pinned native source
+        uses: actions/checkout@v4
+        with:
+          repository: thedtvn/attack_shark_x87_rs
+          ref: 3d489cd0c71fb30e6f1729c213963c644e287fa1
+          path: native-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install native build dependencies without prepare
+        working-directory: native-source
+        run: npm install --ignore-scripts
+      - name: Build native module and TypeScript
+        working-directory: native-source
+        run: npm run build
+      - name: Stage and smoke-test package
+        shell: pwsh
+        run: |
+          node scripts/package-native.mjs native-source native-stage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node -e "const { Keyboard } = require('./native-stage'); if (typeof Keyboard?.openAsync !== 'function') throw new Error('Keyboard.openAsync missing');"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Pack release tarball
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts | Out-Null
+          $destination = (Resolve-Path artifacts).Path
+          npm pack ./native-stage --pack-destination "$destination"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Rename-Item -Path artifacts/attack-shark-x87-0.1.0.tgz -NewName attack-shark-x87-0.1.0-win32-x64.tgz
+      - name: Publish release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --target main --title "$env:RELEASE_TAG" --notes "Windows x64 native package built from the pinned upstream source."
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release upload "$env:RELEASE_TAG" artifacts/attack-shark-x87-0.1.0-win32-x64.tgz --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
