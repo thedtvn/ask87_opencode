@@ -1,4 +1,7 @@
-import type { Key, Rgb } from "attack-shark-x87";
+import { createRequire } from "node:module";
+import type { Key, Rgb } from "../vendor/attack-shark-x87/lib/ask87_ts/dist/index.js";
+
+const requireNative = createRequire(import.meta.url);
 
 export interface KeyIndicator {
   color: "white" | "green" | "blue" | "red";
@@ -22,7 +25,8 @@ const COLORS = {
 } as const;
 
 async function openNative(): Promise<KeyboardDevice> {
-  const { Keyboard, Key } = await import("attack-shark-x87");
+  // Vendored, prebuilt Windows x64 package avoids Git/remote dependency installation.
+  const { Keyboard, Key } = requireNative("../vendor/attack-shark-x87") as typeof import("../vendor/attack-shark-x87/lib/ask87_ts/dist/index.js");
   const device = await Keyboard.openAsync();
   return {
     keys: Object.values(Key),

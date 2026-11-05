@@ -48,7 +48,7 @@ The server and TUI use TypeScript source entries. The experimental GUI part uses
 
 ## Development
 
-Use Node.js 22 or newer and npm. Native keyboard bindings must be available for the server platform.
+Use Node.js 22 or newer and npm on a supported platform. The vendored native binding is loaded lazily by the server part; tests use fake hardware.
 
 ```sh
 npm ci
@@ -67,7 +67,15 @@ Server events include session creation and execution lifecycle, permission ask/r
 
 No prompts, answers, permission resources, session IDs, machine paths, or device metadata are logged. Client/session IDs are used only in memory and authenticated OpenCode RPC messages. Environment files, local npm configuration, keys, dependencies, logs, and OpenCode state are ignored. Review staged changes before pushing; ignore rules do not remove already-committed secrets.
 
-The OpenCode SDK is pinned to 2.2.5. The keyboard dependency currently comes from GitHub; pin a revision before reproducible deployment. Rerun `npm audit` before deployment; an earlier audit reported moderate advisories in the SDK dependency tree.
+The OpenCode SDK is pinned to 2.2.5. The keyboard runtime is vendored under `vendor/attack-shark-x87` with prebuilt native bindings, so installing this plugin from GitHub does not require Rust, Git preparation scripts, or remote tarball dependencies. Bindings are built natively by GitHub Actions from upstream commit `3d489cd0c71fb30e6f1729c213963c644e287fa1` for:
+
+| Platform | Architectures |
+| --- | --- |
+| Windows | x64, ARM64 |
+| Linux, glibc | x64, ARM64 |
+| macOS | Intel x64, Apple Silicon ARM64 |
+
+`SOURCE.json` records the upstream commit and per-binary SHA-256 values. Linux musl distributions such as Alpine are not supported. Runtime keyboard access may require operating-system permissions; on Linux, upstream documents a udev rule for USB `258a:010c` and 2.4G receiver `3554:fa09`, or root access. All targets are built and load-tested on GitHub Actions; only Windows x64 has been tested with the physical keyboard. Rerun `npm audit` before deployment; an earlier audit reported moderate advisories in the SDK dependency tree.
 
 ## License
 

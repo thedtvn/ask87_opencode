@@ -1,0 +1,37 @@
+{
+  "name": "attack-shark-x87",
+  "version": "0.1.0",
+  "description": "Node.js bindings for the ATTACK SHARK X87 keyboard (USB and 2.4G)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thedtvn/attack_shark_x87_rs.git"
+  },
+  "keywords": [
+    "keyboard",
+    "hid",
+    "rgb",
+    "attack-shark",
+    "x87"
+  ],
+  "main": "lib/ask87_ts/dist/index.js",
+  "types": "lib/ask87_ts/dist/index.d.ts",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "lib/ask87_ts/dist",
+    "lib/ask87_ts/native/*/ask87.node",
+    "lib/ask87_ts/native/native.d.ts",
+    "SOURCE.json"
+  ],
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

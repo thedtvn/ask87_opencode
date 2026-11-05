@@ -21,11 +21,21 @@
   },
   "files": [
     "src",
-    "dist/gui-experimental.cjs"
+    "dist/gui-experimental.cjs",
+    "vendor/attack-shark-x87"
   ],
   "keywords": [
     "opencode",
     "opencode-plugin"
+  ],
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
   ],
   "engines": {
     "node": ">=22"
@@ -35,12 +45,10 @@
     "dev": "tsc -p tsconfig.json --noEmit --watch",
     "test": "tsx --test tests/*.test.ts",
     "build": "vite build",
-    "check": "npm run typecheck && npm test && npm run build",
-    "prepare": "npm run build"
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
-    "@opencode/plugin": "2.2.5",
-    "attack-shark-x87": "github:thedtvn/attack_shark_x87_rs"
+    "@opencode/plugin": "2.2.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
