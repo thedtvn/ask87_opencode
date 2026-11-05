@@ -1,7 +1,14 @@
 {
   "repository": "https://github.com/thedtvn/attack_shark_x87_rs",
   "commit": "3d489cd0c71fb30e6f1729c213963c644e287fa1",
-  "napiTarget": "win32-x64",
   "version": "0.1.0",
-  "binarySha256": "52119cbaa877b79f62a31e554c82850e9b84fea14458c67234e4ecd266f211e8"
+  "release": "https://github.com/thedtvn/ask87_opencode/releases/tag/native-v0.1.0-multi",
+  "targets": {
+    "win32-x64": "be91f52d01ef13be5de17541889ac9cd6a2bac254a3d4f3f234598ad99e90c1e",
+    "win32-arm64": "283f6998f2e6a4c18ef462cb3db1ee0cf937fc14ca200adbf1a077b64fc99b01",
+    "linux-x64-gnu": "9cc5dd5cd5f5a40bb0f770b3552136abeaba325fe66c2b5ac65667e2bcec39ad",
+    "linux-arm64-gnu": "9a6b84349ecf6ab447b7c893371bcc22a9844f5e60cc1e539657c43f92dd6ff0",
+    "darwin-x64": "8afc114b1df9cf8b2b21f5d808671d54596a3e5cb9c2afe30d5a7fff912d9ce1",
+    "darwin-arm64": "ebc77fe95a534ced32314312030156c0dad736e44553e4fad8a9a065a91a59cb"
+  }
 }
