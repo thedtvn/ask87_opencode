@@ -44,8 +44,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
     "dev": "tsc -p tsconfig.json --noEmit --watch",
     "test": "tsx --test tests/*.test.ts",
-    "build": "vite build",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build:gui",
+    "build:gui": "vite build"
   },
   "dependencies": {
     "@opencode/plugin": "2.2.5"

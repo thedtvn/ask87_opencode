@@ -44,7 +44,7 @@ Add this package to your global `opencode.json(c)`:
 
 Use global OpenCode configuration for Desktop GUI parts. For local development, the package path can be `../ask87_opencode` if the consuming project and plugin are sibling directories.
 
-The server and TUI use TypeScript source entries. The experimental GUI part uses the committed CommonJS bundle at `dist/gui-experimental.cjs`. Run `npm run build` after GUI source changes and include the updated bundle when pushing. This project's `opencode.json` intentionally does not register another local copy when the plugin is installed globally.
+The server and TUI use TypeScript source entries. The experimental GUI part uses the committed CommonJS bundle at `dist/gui-experimental.cjs`. Run `npm run build:gui` after GUI source changes and include the updated bundle when pushing. This project's `opencode.json` intentionally does not register another local copy when the plugin is installed globally.
 
 ## Development
 
