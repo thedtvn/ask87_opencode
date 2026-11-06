@@ -27,10 +27,10 @@ test("renders all other keys white and blinks only the assigned key", async () =
 test("serializes slow writes and coalesces updates", async () => {
   let release!: () => void;
   const gate = new Promise<void>((resolve) => { release = resolve; });
-  let inflight = 0, max = 0, calls = 0;
+  let inflight = 0, max = 0, calls = 0, time = 0;
   let latest: readonly number[] | undefined;
   const renderer = new KeyboardRenderer({
-    schedule: () => () => {}, now: () => 0,
+    schedule: () => () => {}, now: () => time,
     open: async () => ({ keys: ["1"], slotKeys: ["1"],
       sendFrame: async (frame) => {
         max = Math.max(max, ++inflight); calls++;
@@ -43,6 +43,7 @@ test("serializes slow writes and coalesces updates", async () => {
   renderer.setIndicators([{ color: "red", blink: false }]);
   renderer.setIndicators([{ color: "green", blink: false }]);
   release(); await renderer.tick();
+  time = 100; await renderer.tick();
   assert.equal(max, 1); assert.deepEqual(latest, [0, 255, 0]);
   await renderer.stop();
 });
