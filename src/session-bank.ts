@@ -24,13 +24,15 @@ export class SessionBank {
   private readonly records = new Map<string, Entry>();
   private readonly presence = new Map<string, Set<string>>();
   private readonly slots: Array<string | undefined> = new Array(SLOT_COUNT).fill(undefined);
-  private queue: string[] = [];
+  private activations: string[] = [];
+  private everPresent = new Set<string>();
 
   /** Register session metadata. A missing parentID never clears a known parent. Child may precede parent. */
   defineSession(id: string, parentID?: string): void {
     if (!id) return;
     this.defined.add(id);
     if (parentID && parentID !== id) this.parents.set(id, parentID);
+    this.reconcile();
   }
 
   /** True if metadata was defined or the id is a root listed by some client. */
@@ -67,7 +69,7 @@ export class SessionBank {
     for (const id of rootIDs) if (id) next.add(id);
     if (next.size === 0) this.presence.delete(clientID);
     else this.presence.set(clientID, next);
-    this.reconcile(next);
+    this.reconcile();
   }
 
   releaseClient(clientID: string): void {
@@ -83,23 +85,36 @@ export class SessionBank {
     this.record(id).perms = new Set(requestIDs);
   }
 
+  replaceQuestions(id: string, formIDs: Iterable<string>): void {
+    this.record(id).forms = new Set(formIDs);
+  }
+
   resetExecution(id: string): void {
     const entry = this.records.get(id);
     if (entry) delete entry.exec;
+  }
+
+  activate(id: string): void {
+    const root = this.rootOf(id);
+    if (!this.activations.includes(root)) this.activations.push(root);
+    this.reconcile();
   }
 
   execution(id: string, state: ExecutionState): void {
     if (!id) return;
     const r = this.record(id);
     r.exec = state;
+    if (state === "running") this.activate(id);
     // Pending requests are independent: only explicit replies/cancellation or snapshots clear them.
   }
 
   permission(id: string, requestID: string, pending: boolean): void {
+    if (pending) this.activate(id);
     this.setPending(id, "perms", requestID, pending);
   }
 
   question(id: string, formID: string, pending: boolean): void {
+    if (pending) this.activate(id);
     this.setPending(id, "forms", formID, pending);
   }
 
@@ -147,15 +162,14 @@ export class SessionBank {
     return false;
   }
 
-  /** Compact surviving assignments, then promote waiting roots in opening order. */
-  private reconcile(arrivals: Iterable<string> = []): void {
+  /** Only tasks that started reserve keys; last-tab closure compacts the activation order. */
+  private reconcile(): void {
     const live = new Set<string>();
-    for (const roots of this.presence.values()) for (const id of roots) live.add(id);
-    const ordered = [...this.slots, ...this.queue].filter((id): id is string => id !== undefined && live.has(id));
-    for (const id of arrivals) {
-      if (live.has(id) && !ordered.includes(id)) ordered.push(id);
-    }
+    for (const roots of this.presence.values()) for (const id of roots) live.add(this.rootOf(id));
+    const canonical = [...new Set(this.activations.map((id) => this.rootOf(id)))];
+    this.activations = canonical.filter((id) => live.has(id) || !this.everPresent.has(id));
+    for (const id of live) this.everPresent.add(id);
+    const ordered = this.activations.filter((id) => live.has(id));
     for (let i = 0; i < SLOT_COUNT; i++) this.slots[i] = ordered[i];
-    this.queue = ordered.slice(SLOT_COUNT);
   }
 }

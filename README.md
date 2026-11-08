@@ -1,90 +1,74 @@
 # ask87_opencode
 
-An OpenCode V2 plugin that uses an ATTACK SHARK X87 keyboard's number row as a session status display.
+An OpenCode V2 **TUI/Desktop plugin** that shows local and SSH session status on an ATTACK SHARK X87 keyboard. No custom server plugin is needed on either the local or SSH server.
 
-## Key ownership
+## Architecture
 
-Top-level sessions claim keys in order **1, 2, 3, 4, 5, 6, 7, 8, 9, 0** while their TUI or Desktop tabs are open. Descendant subagent sessions share their parent's key.
+- **TUI:** reads synchronized session data from its connected OpenCode backend and reports to a local keyboard broker.
+- **Desktop window:** reads local/SSH server data and forwards minimal status snapshots through Desktop IPC.
+- **Desktop main process:** reports those snapshots to the same local broker.
+- **Local broker:** combines clients, assigns number-row keys, and owns a dedicated native keyboard worker.
 
-Keys are assigned immediately when session tabs open, in the order they are first observed—not when tasks execute and not alphabetically by session ID. A key stays assigned after execution finishes. Closing the last tab for a session removes that assignment **without deleting history**, and later assignments shift left to keep keys contiguous. For example, closing the third of six sessions moves sessions 4, 5, and 6 to keys 3, 4, and 5, including their current colors. If the same session is open in multiple clients, it remains assigned until its last tab closes. When all ten keys are occupied, additional sessions wait in opening order and are promoted at the end when space becomes available.
+OpenCode's normal backend still provides sessions and events; this package does not add a server plugin, RPC endpoint, or remote hardware connection. The keyboard is always the one attached to the machine running the TUI/Desktop clients. Multiple local clients share it through the broker.
 
-| Highest-priority state in the session group | Lighting |
-| --- | --- |
-| Permission request pending | Blink red |
-| Question/form pending | Blink blue |
-| Main agent executing | Blink white |
-| Main agent stopped, but a descendant is still executing | Blink green |
-| Group execution finished | Solid green |
-| Newly opened session with no execution | Solid white |
-| Every other physical key | Solid white |
+The broker requires **Node.js 22+** available on `PATH`. Set `ASK87_NODE` to an absolute Node executable path when Desktop's environment cannot find it. Do not point it at `opencode` or Electron. It starts on demand, uses authenticated local IPC, releases client state when a connection closes, and exits after clients disconnect. No network-facing listener is used.
 
-Failures and interrupted executions currently use the same finished green as successful executions. Any pending permission takes priority over questions, which take priority over running. Blink off-phases are black; the other keys stay white.
+## Install
 
-## Parts
-
-- **Server:** one process-shared coordinator owns allocation, session hierarchy, status aggregation, and one keyboard connection.
-- **TUI:** reports open root-session tabs.
-- **Desktop GUI:** reports open session tabs in that window.
-
-UI clients send complete tab snapshots and periodic heartbeats to the owning server **with the project location**. Project-scoped RPC calls without that location resolve in the server's default directory and cannot reach a project-only plugin. The server releases abandoned client ownership after a lease expires (approximately 30–35 seconds). Normal tab closure is reported without waiting for that timeout. Closing the last connected TUI/GUI explicitly releases realtime mode and closes the keyboard handle, even if OpenCode's background server remains running. With no UI connected, this plugin does not open the keyboard. Crashes and lost connections fall back to lease expiry rather than immediate release. A suspended or disconnected client may lose its slot and reacquire one on return.
-
-The keyboard is attached to the **server machine**, not necessarily the UI machine. Use one OpenCode server runtime for this keyboard: separate server processes are not coordinated by this plugin.
-
-## Configuration
-
-Add this package to your global `opencode.json(c)`:
+For Desktop, add the package to global `opencode.json(c)`:
 
 ```jsonc
 {
-  "plugins": [
-    { "package": "github:thedtvn/ask87_opencode" }
-  ]
+  "plugins": [{ "package": "github:thedtvn/ask87_opencode" }]
 }
 ```
 
-Use global OpenCode configuration for Desktop GUI parts. For local development, the package path can be `../ask87_opencode` if the consuming project and plugin are sibling directories.
+For TUI, add its TUI-only part to global `cli.json`:
 
-The server and TUI use TypeScript source entries. The experimental GUI part uses the committed CommonJS bundle at `dist/gui-experimental.cjs`. Run `npm run build:gui` after GUI source changes and include the updated bundle when pushing. This project's `opencode.json` intentionally does not register another local copy when the plugin is installed globally.
+```jsonc
+{
+  "plugins": [{ "package": "github:thedtvn/ask87_opencode" }]
+}
+```
 
-## Development
+Restart the relevant client after updating. SSH servers do not need this plugin. This is a Desktop Electron integration; browser-only GUI clients have no local native hardware process.
 
-Use Node.js 22 or newer and npm on a supported platform. The vendored native binding is loaded lazily by the server part; tests use fake hardware.
+## Key ownership and colors
+
+**Idle tabs reserve no keys.** The first task to run gets physical key **1**, the next gets **2**, continuing through **9, 0**. Each task keeps its key after finishing until its last local tab closes. Subagents share their root task's key. When an assignment closes, later assignments shift left along with their current colors. More than ten tasks wait in first-start order; no active key is stolen.
+
+| Highest-priority group state | Lighting |
+| --- | --- |
+| Permission request pending | Blink red |
+| Question/form pending | Blink blue |
+| Main task executing | Blink white |
+| Main stopped, descendants executing | Blink green |
+| Main and descendants finished | Solid green |
+| All unassigned physical keys | Solid white |
+
+Failures and interruptions count as finished. One blink is one second: 500 ms on, 500 ms off. The writer sends only changed frames, with at least 100 ms between sends and no backlog. Native HID runs in a worker, not the UI/main event loop. Hardware timeouts and a 5-second retry backoff prevent connection conflicts from flooding the keyboard. A stuck native OS call may not terminate immediately; replacement workers are refused until the previous worker exits.
+
+Closing the last client releases realtime mode and restores the stored keyboard effect. Disconnect/crash cleanup uses socket closure, with a 30-second lease as a fallback. The driver's continuous-stream guidance does not state a firmware watchdog; changed-only frame retention still needs physical testing on each connection type.
+
+## Native platforms
+
+Prebuilt binaries are included for Windows x64/ARM64, Linux glibc x64/ARM64, and macOS Intel/Apple Silicon. `vendor/attack-shark-x87/SOURCE.json` records their pinned upstream commit and SHA-256 values. Only Windows x64 has been physically tested; other targets were built and load-tested on GitHub runners. Linux musl/Alpine is unsupported. Linux USB access may require upstream udev permissions for `258a:010c` and `3554:fa09`.
+
+## Develop
 
 ```sh
 npm ci
 npm run check
 ```
 
-Tests use fake hardware. Running checks must not open a real keyboard or change lighting. A real TUI/Desktop and keyboard smoke test is still required before claiming end-to-end compatibility.
+`check` builds the broker and generated embedded runtime first, then runs both typechecks, fake-hardware tests, and the Desktop bundle build. The single Desktop bundle includes the pinned runtime archive and extracts it into a content-addressed local cache only from Electron main; it does not rely on unsupported relative module imports or bundle-path globals. Commit updated `dist/broker.cjs` and `dist/gui-experimental.cjs` with source changes: GitHub installation runs no preparation/build hooks.
 
-### Implementation notes
+Tests do not open a real keyboard. Multi-client TUI/Desktop and SSH flows still require end-to-end validation with actual client installations. The SDK is pinned to 2.2.5. Review `npm audit` before deployment; moderate dependency advisories remain.
 
-Realtime frames are used instead of repeatedly saving per-key profiles. Native HID initialization and communication run in a dedicated worker thread, not OpenCode's main thread. A single bounded writer sends only changed visual frames, enforces at least 100 ms between frame starts (at most 10 frames/second during rapid state changes), and keeps only the latest pending state. Identical solid frames are not resent. Blinking is one complete cycle per second: 500 ms on and 500 ms off. Worker requests have timeouts, and unavailable hardware retries with a 5-second backoff. A native call stuck inside the operating system may not be immediately interruptible even when worker termination is requested; the parent thread stops waiting after the timeout. When TUI tabs are disabled, the currently visible session owns a key; the home screen has no session assignment. Every frame contains all physical keys because omitted keys in the keyboard SDK are black. The driver's 20–60 ms continuous-stream guidance does not specify a firmware watchdog; changed-only sending reduces load, but long-idle frame retention still needs hardware validation on each connection type.
+## Privacy
 
-Server events include session creation and execution lifecycle, permission ask/reply, and form create/reply/cancel. Requests are tracked by ID, not incremented counters. Duplicate project subscriptions are deduplicated centrally. Execution history can be bootstrapped from session metadata; already-pending forms at initial load may not be recoverable through the restricted server plugin context, so load the plugin before starting work.
-
-## Privacy and safety
-
-No prompts, answers, permission resources, session IDs, machine paths, or device metadata are logged. Client/session IDs are used only in memory and authenticated OpenCode RPC messages. Environment files, local npm configuration, keys, dependencies, logs, and OpenCode state are ignored. Review staged changes before pushing; ignore rules do not remove already-committed secrets.
-
-The OpenCode SDK is pinned to 2.2.5. The keyboard runtime is vendored under `vendor/attack-shark-x87` with prebuilt native bindings, so installing this plugin from GitHub does not require Rust, Git preparation scripts, or remote tarball dependencies. Bindings are built natively by GitHub Actions from upstream commit `3d489cd0c71fb30e6f1729c213963c644e287fa1` for:
-
-| Platform | Architectures |
-| --- | --- |
-| Windows | x64, ARM64 |
-| Linux, glibc | x64, ARM64 |
-| macOS | Intel x64, Apple Silicon ARM64 |
-
-`SOURCE.json` records the upstream commit and per-binary SHA-256 values. Linux musl distributions such as Alpine are not supported. Runtime keyboard access may require operating-system permissions; on Linux, upstream documents a udev rule for USB `258a:010c` and 2.4G receiver `3554:fa09`, or root access. All targets are built and load-tested on GitHub Actions; only Windows x64 has been tested with the physical keyboard. Rerun `npm audit` before deployment; an earlier audit reported moderate advisories in the SDK dependency tree.
+Snapshots contain only generated session IDs, execution states, pending request IDs, tab presence, and first-start timestamps. They never contain prompt text, questions, answers, permission resources, credentials, or SSH passwords. Snapshots stay in memory and authenticated local IPC; no raw payloads are logged. Local broker endpoint/token files live outside the repository. Environment files, keys, dependencies, logs, and OpenCode state are ignored.
 
 ## License
 
-[MIT](LICENSE) © 2026 The DT.
-
-## Documentation
-
-- [V2 plugin parts and loading](https://opencode.ai/v2/docs/build/plugins)
-- [Server plugins](https://opencode.ai/v2/docs/build/plugins/server)
-- [TUI plugins](https://opencode.ai/v2/docs/build/plugins/cli)
-- [GUI plugins](https://opencode.ai/v2/docs/build/plugins/gui)
-- [Plugin RPC](https://opencode.ai/v2/docs/build/plugins/rpc)
+[MIT](LICENSE) © 2026 The DT. The vendored driver retains its upstream MIT license.

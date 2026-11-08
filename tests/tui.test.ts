@@ -1,24 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Plugin } from "@opencode/plugin/tui";
-import tui from "../src/tui.js";
-import { parsePresence } from "../src/rpc.js";
+import { collectClientSessions, type ClientData } from "../src/client-snapshot.js";
 
-for (const tabsEnabled of [false, true]) {
-  test(`TUI startup reports ${tabsEnabled ? "open tabs" : "the visible session with tabs disabled"}`, async () => {
-    const snapshots: unknown[] = [];
-    const context = {
-      location: { directory: "/test/project" },
-      client: { rpc: () => ({ sync: async (snapshot: unknown) => { snapshots.push(snapshot); return { ok: true }; } }) },
-      data: { session: { root: () => "root" } },
-      ui: {
-        tabs: { enabled: () => tabsEnabled, list: () => tabsEnabled ? [{ sessionID: "root" }] : [] },
-        router: { current: () => ({ type: "session", sessionID: "child" }) },
-      },
-    } as unknown as Plugin.Context;
-    const cleanup = await tui.setup(context);
-    try {
-      assert.deepEqual(parsePresence(snapshots[0]).sessionIDs, ["root"]);
-    } finally { if (cleanup) await cleanup(); }
-  });
-}
+test("client snapshots aggregate remote descendants without any custom server plugin", () => {
+  const records = [{ id: "root", outcome: "succeeded" }, { id: "child", parentID: "root", time: { busy: 123 } }];
+  const data: ClientData = { session: {
+    list: () => records, get: (id) => records.find((item) => item.id === id), root: () => "root", family: () => ["child"],
+    status: (id) => id === "child" ? "running" : "idle",
+    permission: { list: (id) => id === "child" ? [{ id: "permission" }] : [] }, form: { list: () => [] },
+  } };
+  const started = new Map<string, number>();
+  const snapshots = collectClientSessions("opencode", data, ["root"], started);
+  assert.equal(snapshots[0]?.open, true); assert.equal(snapshots[1]?.open, false);
+  assert.equal(snapshots[1]?.parentID, "opencode\nroot"); assert.equal(snapshots[1]?.state, "running");
+  assert.deepEqual(snapshots[1]?.permissionIDs, ["permission"]); assert.equal(snapshots[1]?.startedAt, 123);
+});

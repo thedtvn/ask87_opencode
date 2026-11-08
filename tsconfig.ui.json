@@ -1,21 +1,7 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022", "DOM"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitOverride": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "noEmit": true
+    "lib": ["ES2022", "DOM"]
   },
-  "include": [
-    "src/rpc.ts",
-    "src/presence.ts",
-    "src/tui.tsx",
-    "src/gui.tsx"
-  ]
+  "include": ["src/tui.tsx", "src/gui.tsx", "src/gui-ipc.ts", "src/gui-main.ts"]
 }
