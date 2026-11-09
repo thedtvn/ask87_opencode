@@ -74,9 +74,16 @@ export async function connectBroker(options: { entryPath?: string } = {}): Promi
   if (locked) {
     try {
       try { return await connectExisting(); } catch {}
-      const node = process.env.ASK87_NODE ?? (process.platform === "win32" ? "node.exe" : "node");
-      const result = await promisify(execFile)(node, ["-p", "process.versions.node"], { timeout: 2000, windowsHide: true });
-      if (Number(result.stdout.trim().split(".")[0]) < 22) throw new Error("Node.js 22 is required for the local keyboard broker");
+      const win = process.platform === "win32";
+      const candidates = process.env.ASK87_NODE ? [process.env.ASK87_NODE] : win ? ["node.exe", "bun.exe"] : ["node", "bun"];
+      let node: string | undefined;
+      for (const candidate of candidates) {
+        try {
+          const result = await promisify(execFile)(candidate, ["-p", "process.versions.node"], { timeout: 2000, windowsHide: true });
+          if (Number(result.stdout.trim().split(".")[0]) >= 22) { node = candidate; break; }
+        } catch {}
+      }
+      if (!node) throw new Error("Node.js 22+ or Bun is required for the local keyboard broker");
       const entry = options.entryPath ?? fileURLToPath(new URL("../dist/broker.cjs", import.meta.url));
       const child = spawn(node, [entry, "--serve"], { detached: true, stdio: "ignore", windowsHide: true });
       child.on("error", () => {}); child.unref();

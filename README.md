@@ -11,7 +11,7 @@ An OpenCode V2 **TUI/Desktop plugin** that shows local and SSH session status on
 
 OpenCode's normal backend still provides sessions and events; this package does not add a server plugin, RPC endpoint, or remote hardware connection. The keyboard is always the one attached to the machine running the TUI/Desktop clients. Multiple local clients share it through the broker.
 
-The broker requires **Node.js 22+** available on `PATH`. Set `ASK87_NODE` to an absolute Node executable path when Desktop's environment cannot find it. Do not point it at `opencode` or Electron. It starts on demand, uses authenticated local IPC, releases client state when a connection closes, and exits after clients disconnect. No network-facing listener is used.
+The broker requires **Node.js 22+** or **Bun** available on `PATH` (Node is tried first, then Bun). Set `ASK87_NODE` to an absolute Node or Bun executable path when Desktop's environment cannot find it. Do not point it at `opencode` or Electron. It starts on demand, uses authenticated local IPC, releases client state when a connection closes, and exits after clients disconnect. No network-facing listener is used.
 
 ## Install
 
